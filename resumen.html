@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Detección de Rostros</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .file-card {
+            background: #f8f9fa;
+            border-left: 5px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .file-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .file-card h3 {
+            color: #764ba2;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-icon {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .file-card p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .file-card ul {
+            margin-left: 20px;
+            color: #666;
+        }
+        
+        .file-card ul li {
+            margin-bottom: 5px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 8px;
+            margin-top: 10px;
+        }
+        
+        .badge.train {
+            background: #28a745;
+        }
+        
+        .badge.detect {
+            background: #fd7e14;
+        }
+        
+        .badge.util {
+            background: #17a2b8;
+        }
+        
+        .flow-diagram {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .flow-step {
+            display: inline-block;
+            background: white;
+            padding: 15px 25px;
+            margin: 5px;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .arrow {
+            display: inline-block;
+            margin: 0 10px;
+            color: #764ba2;
+            font-size: 1.5em;
+        }
+        
+        footer {
+            background: #2d3748;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Sistema de Detección de Rostros</h1>
+            <p>Red Neuronal MLP con descriptores HOG</p>
+        </header>
+        
+        <div class="content">
+            <div class="section">
+                <h2>📊 Flujo del Sistema</h2>
+                <div class="flow-diagram">
+                    <div class="flow-step">1. Preparar Datos</div>
+                    <span class="arrow">→</span>
+                    <div class="flow-step">2. Entrenar Modelo</div>
+                    <span class="arrow">→</span>
+                    <div class="flow-step">3. Detectar Rostros</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🧠 Modelo y Utilidades</h2>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">📐</span>mlp_model.py</h3>
+                    <p><strong>Función:</strong> Define la arquitectura de la red neuronal multicapa (MLP).</p>
+                    <p><strong>Contiene:</strong></p>
+                    <ul>
+                        <li>Función de activación sigmoide</li>
+                        <li>Inicialización de parámetros (pesos y sesgos)</li>
+                        <li>Propagación hacia adelante (forward)</li>
+                        <li>Cálculo de costo con regularización L2</li>
+                        <li>Retropropagación (backward)</li>
+                        <li>Actualización de parámetros</li>
+                    </ul>
+                    <span class="badge util">Core</span>
+                    <span class="badge util">Red Neuronal</span>
+                </div>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">📦</span>load_data.py</h3>
+                    <p><strong>Función:</strong> Carga y preprocesa el dataset de entrenamiento.</p>
+                    <p><strong>Características:</strong></p>
+                    <ul>
+                        <li>Extrae descriptores HOG (Histogram of Oriented Gradients) de imágenes 128x128</li>
+                        <li>Lee anotaciones XML para obtener coordenadas de rostros</li>
+                        <li>Reescala coordenadas cuando imagen real ≠ dimensiones XML</li>
+                        <li>Convierte rostros a escala de grises</li>
+                        <li>Retorna matriz X (descriptores) y vector Y (etiquetas)</li>
+                    </ul>
+                    <span class="badge util">Preprocesamiento</span>
+                    <span class="badge util">HOG</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🎓 Entrenamiento</h2>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">🔧</span>generar_train_txt.py</h3>
+                    <p><strong>Función:</strong> Genera el archivo train.txt con la lista de imágenes.</p>
+                    <p><strong>Proceso:</strong> Lee archivos XML de anotaciones y crea un archivo de texto con los nombres (sin extensión) para entrenar el modelo.</p>
+                    <span class="badge train">Preparación</span>
+                </div>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">💪</span>train.py</h3>
+                    <p><strong>Función:</strong> Script principal de entrenamiento del modelo.</p>
+                    <p><strong>Proceso:</strong></p>
+                    <ul>
+                        <li>Carga dataset desde carpetas JPEGImages y Annotations</li>
+                        <li>Inicializa red neuronal (256 neuronas en capa oculta)</li>
+                        <li>Entrena durante 20 épocas con mini-batches de 32</li>
+                        <li>Learning rate: 0.01</li>
+                        <li>Guarda pesos entrenados: W1.npy, b1.npy, W2.npy, b2.npy</li>
+                    </ul>
+                    <span class="badge train">Entrenamiento</span>
+                    <span class="badge train">20 Épocas</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>🔍 Detección de Rostros</h2>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">1️⃣</span>detectar.py</h3>
+                    <p><strong>Función:</strong> Detector básico para rostros previamente recortados.</p>
+                    <p><strong>Uso:</strong> Requiere una imagen de 28x28 píxeles ya recortada del rostro. Retorna la probabilidad de que sea un rostro.</p>
+                    <span class="badge detect">Básico</span>
+                    <span class="badge detect">Prueba</span>
+                </div>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">2️⃣</span>detector_rostro.py</h3>
+                    <p><strong>Función:</strong> Detector con técnica de ventana deslizante (sliding window).</p>
+                    <p><strong>Características:</strong></p>
+                    <ul>
+                        <li>Escanea imagen completa con ventanas de 128x128 px</li>
+                        <li>Paso de 32 píxeles entre ventanas</li>
+                        <li>Umbral de detección: 90% de probabilidad</li>
+                        <li>⚠️ Genera múltiples detecciones superpuestas</li>
+                    </ul>
+                    <span class="badge detect">Sliding Window</span>
+                    <span class="badge detect">V1</span>
+                </div>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">3️⃣</span>detector_rostro2.py</h3>
+                    <p><strong>Función:</strong> Mejora del detector con Non-Maximum Suppression (NMS).</p>
+                    <p><strong>Mejoras:</strong></p>
+                    <ul>
+                        <li>Incluye algoritmo NMS para eliminar detecciones duplicadas</li>
+                        <li>Threshold de solapamiento: 35%</li>
+                        <li>Mantiene solo la detección con mayor confianza por región</li>
+                        <li>Reduce significativamente falsos positivos</li>
+                    </ul>
+                    <span class="badge detect">NMS</span>
+                    <span class="badge detect">V2</span>
+                </div>
+                
+                <div class="file-card">
+                    <h3><span class="file-icon">⭐</span>detectar_rostros3.py</h3>
+                    <p><strong>Función:</strong> Versión más avanzada con NMS + agrupamiento DBSCAN.</p>
+                    <p><strong>Características Premium:</strong></p>
+                    <ul>
+                        <li>Aplica NMS para eliminar solapamientos</li>
+                        <li>Usa DBSCAN (clustering) para agrupar detecciones cercanas</li>
+                        <li>Parámetros: eps=60, min_samples=1</li>
+                        <li>Promedia cajas del mismo grupo y toma máxima probabilidad</li>
+                        <li>✅ Mejor resultado final: 1 caja por rostro</li>
+                    </ul>
+                    <span class="badge detect">NMS + DBSCAN</span>
+                    <span class="badge detect">V3 - Recomendado</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📋 Resumen de Evolución</h2>
+                <div class="flow-diagram">
+                    <div style="text-align: left; max-width: 800px; margin: 0 auto;">
+                        <p style="margin-bottom: 15px;"><strong style="color: #667eea;">Versión 1:</strong> Sliding window básico → Muchas detecciones superpuestas</p>
+                        <p style="margin-bottom: 15px;"><strong style="color: #667eea;">Versión 2:</strong> + NMS → Elimina solapamientos pero puede quedar más de 1 caja por rostro</p>
+                        <p><strong style="color: #667eea;">Versión 3:</strong> + DBSCAN → 1 caja final por rostro (óptimo) ✨</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            Sistema de Detección de Rostros | MLP + HOG + Sliding Window + NMS + DBSCAN
+        </footer>
+    </div>
+</body>
+</html>
