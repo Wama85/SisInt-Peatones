@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import cv2
 from load_data import load_dataset, extract_7x7
 from mlp_model import *
 
@@ -13,7 +14,7 @@ VAL_IMG = r"PEATONES/Val/JPEGImages"
 VAL_XML = r"PEATONES/Val/Annotations"
 VAL_TXT = r"PEATONES/Val/val.txt"
 
-NEG_DIR = r"negativos"   # carpeta donde guardas imágenes negativas (NO rostros)
+NEG_DIR = r"negativos"   # carpeta donde guardas imágenes negativas (NO peatones)
 
 # ========================== DEBUG ===============================
 
@@ -51,7 +52,7 @@ print("========== FIN DEBUG ==========\n")
 
 # ========================== CARGA POSITIVOS ===============================
 
-print("[INFO] Cargando dataset de ROSTROS (positivos)...")
+print("[INFO] Cargando dataset de PEATONES (positivos)...")
 X_pos, Y_pos = load_dataset(TRAIN_IMG, TRAIN_XML, TRAIN_TXT)
 
 print("X_pos:", X_pos.shape)   # (n_features, m_pos)
@@ -65,6 +66,9 @@ if X_pos.shape[1] == 0:
 # ========================== CARGA NEGATIVOS ===============================
 
 def load_negatives(neg_dir):
+    """
+    Carga imágenes negativas (sin peatones) desde una carpeta
+    """
     Xn, Yn = [], []
 
     if not os.path.isdir(neg_dir):
@@ -89,10 +93,13 @@ def load_negatives(neg_dir):
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Usamos el mismo descriptor 7x7 que para los rostros
-        desc = extract_7x7(gray)
-        Xn.append(desc)
-        Yn.append(0)   # etiqueta 0 = NO rostro
+        try:
+            desc = extract_7x7(gray)
+            Xn.append(desc)
+            Yn.append(0)   # etiqueta 0 = NO peatón
+        except Exception as e:
+            print(f"  - ⚠ Error procesando {name}: {e}")
+            continue
 
     if len(Xn) == 0:
         print("⚠ No se pudo generar ningún negativo válido.")
@@ -105,8 +112,7 @@ def load_negatives(neg_dir):
     return Xn, Yn
 
 
-# cargar negativos
-import cv2  # lo importamos aquí para usarlo en load_negatives
+# Cargar negativos
 X_neg, Y_neg = load_negatives(NEG_DIR)
 
 print("X_neg:", X_neg.shape)
@@ -124,6 +130,8 @@ else:
 print("\n[INFO] Dataset final:")
 print("X_train:", X_train.shape)   # (n_features, m_total)
 print("Y_train:", Y_train.shape)   # (1, m_total)
+print(f"  - Positivos: {int(Y_train.sum())}")
+print(f"  - Negativos: {int(Y_train.shape[1] - Y_train.sum())}")
 
 m = X_train.shape[1]
 if m == 0:
@@ -133,35 +141,79 @@ if m == 0:
 
 # ========================== ENTRENAMIENTO ==============================
 
-n_x = X_train.shape[0]  # número de características (debería ser 49 si es 7x7)
-n_h = 256
-n_y = 1
+n_x = X_train.shape[0]  # número de características (49 para 7x7)
+n_h1 = 256              # primera capa oculta
+n_h2 = 128              # segunda capa oculta
+n_y = 1                 # salida binaria
 
-W1, b1, W2, b2 = initialize_params(n_x, n_h, n_y)
+print(f"\n[INFO] Arquitectura de la red (3 capas):")
+print(f"  - Capa de entrada: {n_x} neuronas")
+print(f"  - Capa oculta 1: {n_h1} neuronas (ReLU)")
+print(f"  - Capa oculta 2: {n_h2} neuronas (ReLU)")
+print(f"  - Capa de salida: {n_y} neurona (Sigmoid)")
+
+# Inicializar parámetros para 3 capas
+W1, b1, W2, b2, W3, b3 = initialize_params(n_x, n_h1, n_h2, n_y)
 
 epochs = 20
 lr = 0.01
 batch_size = 32
+
+print(f"\n[INFO] Hiperparámetros:")
+print(f"  - Épocas: {epochs}")
+print(f"  - Learning rate: {lr}")
+print(f"  - Batch size: {batch_size}")
 
 print("\n[INFO] Iniciando entrenamiento...\n")
 
 for epoch in range(epochs):
     # Barajar datos
     perm = np.random.permutation(m)
-    X_train = X_train[:, perm]
-    Y_train = Y_train[:, perm]
+    X_shuffled = X_train[:, perm]
+    Y_shuffled = Y_train[:, perm]
 
     for i in range(0, m, batch_size):
-        Xb = X_train[:, i:i+batch_size]
-        Yb = Y_train[:, i:i+batch_size]
+        Xb = X_shuffled[:, i:i+batch_size]
+        Yb = Y_shuffled[:, i:i+batch_size]
 
-        Z1, A1, Z2, A2 = forward(Xb, W1, b1, W2, b2)
-        dW1, db1, dW2, db2 = backward(Xb, Yb, Z1, A1, Z2, A2, W1, W2)
-        W1, b1, W2, b2 = update_params(W1, b1, W2, b2, dW1, db1, dW2, db2, lr)
+        # Forward pass (3 capas)
+        Z1, A1, Z2, A2, Z3, A3 = forward(Xb, W1, b1, W2, b2, W3, b3)
+        
+        # Backward pass (3 capas)
+        dW1, db1, dW2, db2, dW3, db3 = backward(Xb, Yb, Z1, A1, Z2, A2, Z3, A3, W1, W2, W3)
+        
+        # Update parameters (3 capas)
+        W1, b1, W2, b2, W3, b3 = update(W1, b1, W2, b2, W3, b3, 
+                                         dW1, db1, dW2, db2, dW3, db3, lr)
 
-    _, _, _, A2_full = forward(X_train, W1, b1, W2, b2)
-    cost = compute_cost(A2_full, Y_train, W1, W2)
-    print(f"Época {epoch+1}/{epochs} - Costo: {cost:.4f}")
+    # Calcular costo en todo el dataset
+    _, _, _, _, _, A3_full = forward(X_shuffled, W1, b1, W2, b2, W3, b3)
+    cost = compute_cost(A3_full, Y_shuffled)
+    
+    # Calcular accuracy
+    predictions = (A3_full > 0.5).astype(int)
+    accuracy = np.mean(predictions == Y_shuffled) * 100
+    
+    print(f"Época {epoch+1:2d}/{epochs} - Costo: {cost:.4f} - Accuracy: {accuracy:.2f}%")
+
+# ========================== EVALUACIÓN FINAL ==============================
+
+print("\n[INFO] Evaluación final en dataset de entrenamiento:")
+_, _, _, _, _, A3_train = forward(X_train, W1, b1, W2, b2, W3, b3)
+predictions_train = (A3_train > 0.5).astype(int)
+accuracy_train = np.mean(predictions_train == Y_train) * 100
+
+# Calcular métricas
+true_positives = np.sum((predictions_train == 1) & (Y_train == 1))
+false_positives = np.sum((predictions_train == 1) & (Y_train == 0))
+false_negatives = np.sum((predictions_train == 0) & (Y_train == 1))
+
+precision = true_positives / (true_positives + false_positives + 1e-8) * 100
+recall = true_positives / (true_positives + false_negatives + 1e-8) * 100
+
+print(f"  - Accuracy: {accuracy_train:.2f}%")
+print(f"  - Precision: {precision:.2f}%")
+print(f"  - Recall: {recall:.2f}%")
 
 # ========================== GUARDAR MODELO ==============================
 
@@ -169,5 +221,11 @@ np.save("W1.npy", W1)
 np.save("b1.npy", b1)
 np.save("W2.npy", W2)
 np.save("b2.npy", b2)
+np.save("W3.npy", W3)
+np.save("b3.npy", b3)
 
-print("\n[OK] Modelo guardado correctamente")
+print("\n[OK] Modelo guardado correctamente:")
+print("  - W1.npy, b1.npy")
+print("  - W2.npy, b2.npy")
+print("  - W3.npy, b3.npy")
+print("\n✅ Entrenamiento completado exitosamente!")
