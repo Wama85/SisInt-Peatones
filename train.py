@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import cv2
-from load_data import load_dataset, extract_7x7
+from load_data import load_dataset, extract_7x7, extract_conv_features
 from mlp_model import *
 
 # ========================== RUTAS ===============================
@@ -14,7 +14,7 @@ VAL_IMG = r"PEATONES/Val/JPEGImages"
 VAL_XML = r"PEATONES/Val/Annotations"
 VAL_TXT = r"PEATONES/Val/val.txt"
 
-NEG_DIR = r"negativos"   # carpeta donde guardas imágenes negativas (NO peatones)
+NEG_DIR = r"negativos"
 
 # ========================== DEBUG ===============================
 
@@ -53,10 +53,10 @@ print("========== FIN DEBUG ==========\n")
 # ========================== CARGA POSITIVOS ===============================
 
 print("[INFO] Cargando dataset de PEATONES (positivos)...")
-X_pos, Y_pos = load_dataset(TRAIN_IMG, TRAIN_XML, TRAIN_TXT)
+X_pos, Y_pos = load_dataset(TRAIN_IMG, TRAIN_XML, TRAIN_TXT, use_conv=True)
 
-print("X_pos:", X_pos.shape)   # (n_features, m_pos)
-print("Y_pos:", Y_pos.shape)   # (1, m_pos)
+print("X_pos:", X_pos.shape)
+print("Y_pos:", Y_pos.shape)
 
 if X_pos.shape[1] == 0:
     print("❌ ERROR: No se pudo cargar ninguna imagen positiva.")
@@ -66,9 +66,6 @@ if X_pos.shape[1] == 0:
 # ========================== CARGA NEGATIVOS ===============================
 
 def load_negatives(neg_dir):
-    """
-    Carga imágenes negativas (sin peatones) desde una carpeta
-    """
     Xn, Yn = [], []
 
     if not os.path.isdir(neg_dir):
@@ -85,18 +82,16 @@ def load_negatives(neg_dir):
 
     for name in archivos:
         path = os.path.join(neg_dir, name)
-        img = cv2.imread(path)
+        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
 
         if img is None:
             print(f"  - ⚠ No se pudo leer {path}")
             continue
 
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
         try:
-            desc = extract_7x7(gray)
+            desc = extract_conv_features(img)
             Xn.append(desc)
-            Yn.append(0)   # etiqueta 0 = NO peatón
+            Yn.append(0)
         except Exception as e:
             print(f"  - ⚠ Error procesando {name}: {e}")
             continue
@@ -105,14 +100,13 @@ def load_negatives(neg_dir):
         print("⚠ No se pudo generar ningún negativo válido.")
         return np.empty((X_pos.shape[0], 0)), np.empty((1, 0))
 
-    Xn = np.array(Xn).T   # (n_features, m_neg)
+    Xn = np.array(Xn).T
     Yn = np.array(Yn).reshape(1, -1)
 
     print("[INFO] Negativos cargados:", Xn.shape[1])
     return Xn, Yn
 
 
-# Cargar negativos
 X_neg, Y_neg = load_negatives(NEG_DIR)
 
 print("X_neg:", X_neg.shape)
@@ -128,8 +122,8 @@ else:
     X_train, Y_train = X_pos, Y_pos
 
 print("\n[INFO] Dataset final:")
-print("X_train:", X_train.shape)   # (n_features, m_total)
-print("Y_train:", Y_train.shape)   # (1, m_total)
+print("X_train:", X_train.shape)
+print("Y_train:", Y_train.shape)
 print(f"  - Positivos: {int(Y_train.sum())}")
 print(f"  - Negativos: {int(Y_train.shape[1] - Y_train.sum())}")
 
@@ -141,10 +135,10 @@ if m == 0:
 
 # ========================== ENTRENAMIENTO ==============================
 
-n_x = X_train.shape[0]  # número de características (49 para 7x7)
-n_h1 = 256              # primera capa oculta
-n_h2 = 128              # segunda capa oculta
-n_y = 1                 # salida binaria
+n_x = X_train.shape[0]
+n_h1 = 256
+n_h2 = 128
+n_y = 1
 
 print(f"\n[INFO] Arquitectura de la red (3 capas):")
 print(f"  - Capa de entrada: {n_x} neuronas")
@@ -152,7 +146,6 @@ print(f"  - Capa oculta 1: {n_h1} neuronas (ReLU)")
 print(f"  - Capa oculta 2: {n_h2} neuronas (ReLU)")
 print(f"  - Capa de salida: {n_y} neurona (Sigmoid)")
 
-# Inicializar parámetros para 3 capas
 W1, b1, W2, b2, W3, b3 = initialize_params(n_x, n_h1, n_h2, n_y)
 
 epochs = 20
@@ -167,7 +160,6 @@ print(f"  - Batch size: {batch_size}")
 print("\n[INFO] Iniciando entrenamiento...\n")
 
 for epoch in range(epochs):
-    # Barajar datos
     perm = np.random.permutation(m)
     X_shuffled = X_train[:, perm]
     Y_shuffled = Y_train[:, perm]
@@ -176,21 +168,13 @@ for epoch in range(epochs):
         Xb = X_shuffled[:, i:i+batch_size]
         Yb = Y_shuffled[:, i:i+batch_size]
 
-        # Forward pass (3 capas)
         Z1, A1, Z2, A2, Z3, A3 = forward(Xb, W1, b1, W2, b2, W3, b3)
-        
-        # Backward pass (3 capas)
         dW1, db1, dW2, db2, dW3, db3 = backward(Xb, Yb, Z1, A1, Z2, A2, Z3, A3, W1, W2, W3)
-        
-        # Update parameters (3 capas)
         W1, b1, W2, b2, W3, b3 = update(W1, b1, W2, b2, W3, b3, 
                                          dW1, db1, dW2, db2, dW3, db3, lr)
 
-    # Calcular costo en todo el dataset
     _, _, _, _, _, A3_full = forward(X_shuffled, W1, b1, W2, b2, W3, b3)
     cost = compute_cost(A3_full, Y_shuffled)
-    
-    # Calcular accuracy
     predictions = (A3_full > 0.5).astype(int)
     accuracy = np.mean(predictions == Y_shuffled) * 100
     
@@ -198,12 +182,11 @@ for epoch in range(epochs):
 
 # ========================== EVALUACIÓN FINAL ==============================
 
-print("\n[INFO] Evaluación final en dataset de entrenamiento:")
+print("\n[INFO] Evaluación final:")
 _, _, _, _, _, A3_train = forward(X_train, W1, b1, W2, b2, W3, b3)
 predictions_train = (A3_train > 0.5).astype(int)
 accuracy_train = np.mean(predictions_train == Y_train) * 100
 
-# Calcular métricas
 true_positives = np.sum((predictions_train == 1) & (Y_train == 1))
 false_positives = np.sum((predictions_train == 1) & (Y_train == 0))
 false_negatives = np.sum((predictions_train == 0) & (Y_train == 1))
@@ -224,8 +207,5 @@ np.save("b2.npy", b2)
 np.save("W3.npy", W3)
 np.save("b3.npy", b3)
 
-print("\n[OK] Modelo guardado correctamente:")
-print("  - W1.npy, b1.npy")
-print("  - W2.npy, b2.npy")
-print("  - W3.npy, b3.npy")
+print("\n[OK] Modelo guardado correctamente")
 print("\n✅ Entrenamiento completado exitosamente!")
